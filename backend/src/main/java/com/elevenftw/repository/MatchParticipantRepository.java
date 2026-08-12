@@ -13,6 +13,7 @@ public interface MatchParticipantRepository extends JpaRepository<MatchParticipa
     boolean existsByMatchIdAndUserId(Long matchId, Long userId);
     Optional<MatchParticipant> findByMatchIdAndUserId(Long matchId, Long userId);
     List<MatchParticipant> findByMatchId(Long matchId);
+    List<MatchParticipant> findByUserId(Long userId);
     /** Earliest-joined waitlisted entry — who gets promoted first when a confirmed spot frees up. */
     Optional<MatchParticipant> findFirstByMatchIdAndStatusOrderByJoinedAtAsc(Long matchId, ParticipantStatus status);
     /** One row per match per user (unique constraint), so this doubles as "distinct matches confirmed in". */
