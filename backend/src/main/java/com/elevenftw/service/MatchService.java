@@ -89,6 +89,8 @@ public class MatchService {
                 .categoryGender(req.categoryGender())
                 .categoryAge(req.categoryAge())
                 .skillLevel(req.skillLevel())
+                .matchType(req.matchType() != null ? req.matchType() : com.elevenftw.entity.enums.MatchType.FRIENDLY)
+                .description(req.description())
                 .province(req.province())
                 .addressText(req.addressText())
                 .latitude(coords.lat())
@@ -141,6 +143,8 @@ public class MatchService {
         match.setCategoryGender(req.categoryGender());
         match.setCategoryAge(req.categoryAge());
         match.setSkillLevel(req.skillLevel());
+        if (req.matchType() != null) match.setMatchType(req.matchType());
+        match.setDescription(req.description());
         match.setProvince(req.province());
         match.setAddressText(req.addressText());
         match.setMatchDate(req.matchDate());
@@ -279,7 +283,41 @@ public class MatchService {
         MatchParticipant participant = participantRepository.findByMatchIdAndUserId(matchId, userId)
                 .orElseThrow(() -> new IllegalStateException("You haven't joined this match"));
 
+        removeParticipantAndPromote(match, participant);
+    }
+
+    /**
+     * Organizer-initiated removal — same effect as the player leaving
+     * themselves (including waitlist promotion), but gated to the match
+     * creator and targeting an arbitrary participant. Powers "Manage
+     * Players" on the match detail page.
+     */
+    @Transactional
+    public void removeParticipant(Long matchId, Long requesterId, Long targetUserId) {
+        Match match = matchRepository.findByIdForUpdate(matchId)
+                .orElseThrow(() -> new NotFoundException("Match not found"));
+        if (!match.getCreatedBy().getId().equals(requesterId)) {
+            throw new ForbiddenException("Only the organizer can remove players from this match");
+        }
+        MatchParticipant participant = participantRepository.findByMatchIdAndUserId(matchId, targetUserId)
+                .orElseThrow(() -> new NotFoundException("That player hasn't joined this match"));
+
+        removeParticipantAndPromote(match, participant);
+
+        if (!targetUserId.equals(requesterId)) {
+            notificationService.notify(
+                    participant.getUser(),
+                    NotificationType.PLAYER_REMOVED,
+                    "You were removed from the " + match.getSport().name().toLowerCase() + " match at " + match.getAddressText() + ".",
+                    match.getId()
+            );
+        }
+    }
+
+    /** Shared by leaveMatch and removeParticipant: delete the row, then promote the next waitlisted player if a confirmed spot just opened up. */
+    private void removeParticipantAndPromote(Match match, MatchParticipant participant) {
         boolean wasConfirmed = participant.getStatus() == ParticipantStatus.CONFIRMED;
+        Long matchId = match.getId();
         participantRepository.delete(participant);
 
         if (wasConfirmed) {

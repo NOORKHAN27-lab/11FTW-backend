@@ -3,6 +3,7 @@ package com.elevenftw.config;
 import com.elevenftw.security.JwtAuthFilter;
 import com.elevenftw.security.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -53,6 +54,39 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Both JwtAuthFilter and RateLimitFilter are {@code @Component}s so they
+     * can be constructor-injected above — but Spring Boot's auto-config also
+     * treats any {@code Filter} bean as a *second*, independent servlet
+     * filter and registers it directly with the container (default
+     * urlPatterns "/*"), on top of the explicit {@code addFilterBefore}
+     * wiring in {@link #filterChain}. That means both filters were actually
+     * running TWICE per request.
+     * <p>
+     * For JwtAuthFilter that's harmless (parsing the token and setting the
+     * SecurityContext twice is a no-op the second time), but for
+     * RateLimitFilter it's not: every real request to /api/auth/** was
+     * incrementing its counter twice, so app.rate-limit.max-requests=10
+     * was actually only ever allowing ~5 real requests before returning 429
+     * — easy to hit during normal login/register testing and easy to
+     * mistake for the limit applying somewhere it shouldn't. Disabling
+     * Boot's own auto-registration here leaves the Security-chain wiring
+     * above as the only place either filter actually runs.
+     */
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> disableRateLimitFilterAutoRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthFilter> disableJwtAuthFilterAutoRegistration(JwtAuthFilter filter) {
+        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

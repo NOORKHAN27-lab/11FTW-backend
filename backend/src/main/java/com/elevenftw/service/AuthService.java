@@ -325,7 +325,7 @@ public class AuthService {
     private AuthResponse respondWithTokens(User user) {
         String accessToken = jwtUtil.generateToken(user.getId());
         RefreshToken refreshToken = issueRefreshToken(user);
-        boolean profileComplete = !user.getUsername().startsWith("player_");
-        return new AuthResponse(accessToken, refreshToken.getToken(), profileComplete, UserResponse.from(user));
+        UserResponse userResponse = UserResponse.from(user);
+        return new AuthResponse(accessToken, refreshToken.getToken(), userResponse.profileComplete(), userResponse);
     }
 }

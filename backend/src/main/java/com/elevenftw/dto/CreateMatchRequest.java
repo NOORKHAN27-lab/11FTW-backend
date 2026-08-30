@@ -13,6 +13,8 @@ public record CreateMatchRequest(
     @NotNull GenderCategory categoryGender,
     @NotNull AgeCategory categoryAge,
     @NotNull SkillLevel skillLevel,
+    MatchType matchType,
+    @Size(max = 500) String description,
     @NotNull ProvinceType province,
     @NotBlank String addressText,
     @NotNull LocalDate matchDate,

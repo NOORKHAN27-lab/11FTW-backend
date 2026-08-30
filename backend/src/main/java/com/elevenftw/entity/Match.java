@@ -76,6 +76,15 @@ public class Match {
     @Builder.Default
     private SkillLevel skillLevel = SkillLevel.ANY;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "match_type", nullable = false)
+    @Builder.Default
+    private MatchType matchType = MatchType.FRIENDLY;
+
+    /** Optional free-text blurb shown on the match detail/preview — e.g. "Bring your own water". */
+    @Column(name = "description", length = 500)
+    private String description;
+
     /** e.g. "Rs. 500/head" — display only, the app never touches money. */
     @Column(name = "fee_text")
     private String feeText;

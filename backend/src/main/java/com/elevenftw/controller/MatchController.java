@@ -105,6 +105,17 @@ public class MatchController {
         return matchService.getParticipants(id);
     }
 
+    /** Organizer-only: remove a specific player from the match — see MatchService#removeParticipant. */
+    @DeleteMapping("/{id}/participants/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeParticipant(
+            @PathVariable("id") Long id,
+            @PathVariable("userId") Long targetUserId,
+            @AuthenticationPrincipal Long requesterId
+    ) {
+        matchService.removeParticipant(id, requesterId, targetUserId);
+    }
+
     @PostMapping("/{id}/ratings")
     public MessageResponse rate(
             @PathVariable Long id,
